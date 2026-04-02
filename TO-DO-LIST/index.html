@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>To-Do List</title>
+  <link rel="stylesheet" href="css/css.css">
+</head>
+<body>
+
+<div class="container">
+  <h1>Gerenciador de Tarefas</h1>
+
+  <div class="form">
+    <input type="text" id="taskInput" placeholder="Digite a tarefa">
+    <input type="date" id="taskDate">
+    <button onclick="addTask()">Adicionar</button>
+  </div>
+
+  <p id="errorMsg"></p>
+
+  <h3>Total: <span id="taskCount">0</span></h3>
+
+  <ul id="taskList"></ul>
+</div>
+
+<script>
+  let taskCount = 0;
+
+  function formatDate(date) {
+    const [year, month, day] = date.split("-");
+    return `${day}/${month}/${year}`;
+  }
+
+  function isValidDate(dateStr) {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return false;
+
+    const [year, month, day] = parts;
+
+    return (
+      year.length === 4 &&
+      !isNaN(year) &&
+      !isNaN(month) &&
+      !isNaN(day)
+    );
+  }
+
+  function addTask() {
+    const input = document.getElementById("taskInput");
+    const dateInput = document.getElementById("taskDate");
+    const errorMsg = document.getElementById("errorMsg");
+
+    const taskText = input.value.trim();
+    const taskDate = dateInput.value;
+
+    const wordCount = taskText.split(/\s+/).filter(word => word.length > 0).length;
+
+    // Validações
+    if (taskText.length < 3) {
+      errorMsg.textContent = "A tarefa deve ter no mínimo 3 caracteres";
+      return;
+    }
+
+    if (wordCount > 15) {
+      errorMsg.textContent = "A tarefa deve ter no máximo 15 palavras";
+      return;
+    }
+
+    if (!taskDate || !isValidDate(taskDate)) {
+      errorMsg.textContent = "Digite uma data válida";
+      return;
+    }
+
+    errorMsg.textContent = "";
+
+    const li = document.createElement("li");
+
+    const contentDiv = document.createElement("div");
+    contentDiv.classList.add("task-content");
+
+    const dateSpan = document.createElement("span");
+    dateSpan.classList.add("task-date");
+    dateSpan.textContent = formatDate(taskDate);
+
+    const textSpan = document.createElement("span");
+    textSpan.classList.add("task-text");
+    textSpan.textContent = taskText;
+
+    contentDiv.appendChild(dateSpan);
+    contentDiv.appendChild(textSpan);
+
+    // Botões
+    const btnDiv = document.createElement("div");
+    btnDiv.classList.add("buttons");
+
+    const completeBtn = document.createElement("button");
+    completeBtn.textContent = "Concluir";
+    completeBtn.onclick = function () {
+      contentDiv.classList.toggle("completed");
+    };
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "Remover";
+    removeBtn.onclick = function () {
+      li.remove();
+      taskCount--;
+      updateCounter();
+    };
+
+    btnDiv.appendChild(completeBtn);
+    btnDiv.appendChild(removeBtn);
+
+    li.appendChild(contentDiv);
+    li.appendChild(btnDiv);
+
+    document.getElementById("taskList").appendChild(li);
+
+    input.value = "";
+    dateInput.value = "";
+
+    taskCount++;
+    updateCounter();
+  }
+
+  function updateCounter() {
+    document.getElementById("taskCount").textContent = taskCount;
+  }
+</script>
+
+</body>
+</html>

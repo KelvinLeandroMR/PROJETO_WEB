@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Carrinho de Compras</title>
+    <link rel="stylesheet" href="css/css.css">
+</head>
+<body>
+
+    <header>
+        <h1>🛒 Loja Tech</h1>
+    </header>
+
+    <section class="filtro">
+        <select id="filtro">
+            <option value="todos">Todos</option>
+            <option value="ate50">Até R$50</option>
+            <option value="acima50">Acima de R$50</option>
+        </select>
+    </section>
+
+    <main class="container">
+
+        <div class="produtos">
+            <h2>Produtos</h2>
+            <div id="lista-produtos"></div>
+        </div>
+
+        <div class="carrinho">
+            <h2>Carrinho</h2>
+            <div id="lista-carrinho"></div>
+            <h3 id="total">Total: R$0.00</h3>
+            <button id="limpar">Limpar Carrinho</button>
+        </div>
+
+    </main>
+
+    <script src="js/js.js"></script>
+</body>
+</html>

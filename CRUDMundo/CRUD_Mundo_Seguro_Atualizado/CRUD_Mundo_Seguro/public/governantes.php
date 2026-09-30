@@ -1,0 +1,31 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../app/lib/security.php';
+require_login();
+
+$pdo=db();$errors=[];$edit=null;
+if($_SERVER['REQUEST_METHOD']==='POST'){
+    verify_csrf($_POST['csrf_token']??null);$action=$_POST['action']??'';
+    try{
+        if($action==='save'){
+            $id=(int)($_POST['id_governante']??0);$nome=trim((string)($_POST['nome']??''));$partido=trim((string)($_POST['partido_politico']??''));$nasc=$_POST['data_nascimento']??'';$inicio=$_POST['data_inicio_mandato']??'';$fim=$_POST['data_fim_mandato']??'';$pais=(int)($_POST['pais_id']??0);$cidade=(int)($_POST['cidade_id']??0);
+            if($nome==='')$errors[]='Nome é obrigatório.';if(!$nasc)$errors[]='Data de nascimento é obrigatória.';if(($pais>0)+($cidade>0)!==1)$errors[]='Selecione exatamente um país OU uma cidade.';
+            $idade=0;if($nasc){$idade=(int)(new DateTime($nasc))->diff(new DateTime('today'))->y;if($idade<0||$idade>130)$errors[]='Idade inválida.';}
+            if(!$errors){$paisVal=$pais>0?$pais:null;$cidadeVal=$cidade>0?$cidade:null;if($id>0){$s=$pdo->prepare('UPDATE governantes SET nome=?,partido_politico=?,data_nascimento=?,idade=?,data_inicio_mandato=?,data_fim_mandato=?,pais_id=?,cidade_id=? WHERE id_governante=?');$s->execute([$nome,$partido,$nasc,$idade,$inicio?:null,$fim?:null,$paisVal,$cidadeVal,$id]);audit("Governante #{$id} atualizado.");flash('success','Governante atualizado.');}else{$s=$pdo->prepare('INSERT INTO governantes(nome,partido_politico,data_nascimento,idade,data_inicio_mandato,data_fim_mandato,pais_id,cidade_id) VALUES(?,?,?,?,?,?,?,?)');$s->execute([$nome,$partido,$nasc,$idade,$inicio?:null,$fim?:null,$paisVal,$cidadeVal]);$new=(int)$pdo->lastInsertId();audit("Governante #{$new} cadastrado.");flash('success','Governante cadastrado.');}redirect('governantes.php');}
+        }elseif($action==='delete'){$id=(int)$_POST['id_governante'];$s=$pdo->prepare('DELETE FROM governantes WHERE id_governante=?');$s->execute([$id]);audit("Governante #{$id} excluído.");flash('success','Governante excluído.');redirect('governantes.php');}
+    }catch(PDOException $e){$errors[]='Não foi possível concluir a operação.';}
+}
+if(isset($_GET['edit'])){$s=$pdo->prepare('SELECT * FROM governantes WHERE id_governante=?');$s->execute([(int)$_GET['edit']]);$edit=$s->fetch()?:null;}
+$paises=$pdo->query('SELECT id_pais,nome FROM paises ORDER BY nome')->fetchAll();$cidades=$pdo->query('SELECT c.id_cidade,c.nome,p.nome pais FROM cidades c JOIN paises p ON p.id_pais=c.pais_id ORDER BY c.nome')->fetchAll();
+$list=$pdo->query('SELECT g.*,p.nome pais,c.nome cidade FROM governantes g LEFT JOIN paises p ON p.id_pais=g.pais_id LEFT JOIN cidades c ON c.id_cidade=g.cidade_id ORDER BY g.nome')->fetchAll();
+$title='Governantes';require __DIR__.'/../app/views/header.php';
+?>
+<div class="page-head"><div><h1>Governantes</h1><p class="muted">Associe cada governante a um país ou a uma cidade.</p></div></div>
+<?php if($errors):?><div class="errors"><ul><?php foreach($errors as $e):?><li><?=h($e)?></li><?php endforeach;?></ul></div><?php endif;?>
+<div class="grid"><div class="card"><h2><?= $edit?'Editar governante':'Novo governante' ?></h2><form method="post" data-submit-once><input type="hidden" name="csrf_token" value="<?=h(csrf_token())?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id_governante" value="<?= (int)($edit['id_governante']??0) ?>">
+<div style="margin-bottom:12px"><label>Nome</label><input name="nome" maxlength="120" required value="<?=h($edit['nome']??'')?>"></div><div style="margin-bottom:12px"><label>Partido político</label><input name="partido_politico" maxlength="120" value="<?=h($edit['partido_politico']??'')?>"></div>
+<div class="form-grid"><div><label>Data de nascimento</label><input name="data_nascimento" type="date" required value="<?=h($edit['data_nascimento']??'')?>"></div><div><label>Início do mandato</label><input name="data_inicio_mandato" type="date" value="<?=h($edit['data_inicio_mandato']??'')?>"></div><div><label>Fim do mandato</label><input name="data_fim_mandato" type="date" value="<?=h($edit['data_fim_mandato']??'')?>"></div><div><label>Idade</label><input value="<?= $edit?(int)$edit['idade']:'Calculada ao salvar' ?>" disabled></div></div>
+<p class="muted">Escolha apenas um vínculo.</p><div style="margin-bottom:12px"><label>País</label><select name="pais_id"><option value="">Nenhum</option><?php foreach($paises as $p):?><option value="<?=$p['id_pais']?>" <?=((int)($edit['pais_id']??0)===(int)$p['id_pais'])?'selected':''?>><?=h($p['nome'])?></option><?php endforeach;?></select></div><div style="margin-bottom:12px"><label>Cidade</label><select name="cidade_id"><option value="">Nenhuma</option><?php foreach($cidades as $c):?><option value="<?=$c['id_cidade']?>" <?=((int)($edit['cidade_id']??0)===(int)$c['id_cidade'])?'selected':''?>><?=h($c['nome'])?> - <?=h($c['pais'])?></option><?php endforeach;?></select></div>
+<div class="actions"><button type="submit">Salvar</button><?php if($edit):?><a class="btn btn-secondary" href="governantes.php">Cancelar</a><?php endif;?></div></form></div>
+<div class="card"><h2>Lista</h2><input class="search" data-search-target="#tabela-governantes" placeholder="Pesquisar governante..."><div class="table-wrap"><table id="tabela-governantes"><thead><tr><th>Nome</th><th>Partido</th><th>Idade</th><th>Vínculo</th><th>Mandato</th><th>Ações</th></tr></thead><tbody><?php foreach($list as $g):?><tr><td><?=h($g['nome'])?></td><td><?=h($g['partido_politico']??'—')?></td><td><?=h((string)$g['idade'])?></td><td><?=h($g['pais']?$g['pais']:'Cidade: '.$g['cidade'])?></td><td><?=h(($g['data_inicio_mandato']??'') . ' a ' . ($g['data_fim_mandato']??''))?></td><td class="actions"><a class="btn btn-small" href="?edit=<?=$g['id_governante']?>">Editar</a><form method="post"><input type="hidden" name="csrf_token" value="<?=h(csrf_token())?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id_governante" value="<?=$g['id_governante']?>"><button class="btn-danger btn-small" data-confirm="Excluir este governante?">Excluir</button></form></td></tr><?php endforeach;?></tbody></table></div></div></div>
+<?php require __DIR__.'/../app/views/footer.php'; ?>
